@@ -39,6 +39,21 @@ The web layer receives requests and renders pages. The service layer will hold c
 3. Start the app: `flask --app app run --debug`
 4. Open `http://127.0.0.1:5000`.
 
+## Microsoft Foundry development setup
+
+The development connection test uses an existing Foundry agent; it does not create or modify an agent, vector store, File Search configuration, or uploaded files.
+
+1. Copy `.env.example` to `.env`.
+2. Set `FOUNDRY_PROJECT_ENDPOINT` and `FOUNDRY_AGENT_NAME` in `.env`. Do not commit this file.
+3. Sign in locally with `az login` so `DefaultAzureCredential` can obtain your Azure identity.
+4. Start the Flask app and open `http://127.0.0.1:5000/development/foundry-test`.
+
+The route asks the existing agent: “Compare the kitchen cabinet material across the BOQ, change order, and contractor invoice.” It is a connection check only; it does not make a payment decision.
+
+## Demo dataset
+
+`sample_data/` contains three fictional PDF documents for one renovation scenario: the original BOQ, an approved change order, and a contractor invoice requesting INR 1,50,000. The change order approves INR 8,000 of kitchen cabinet handle/design work and explicitly does not approve a material substitution. The invoice intentionally lists 16mm commercial plywood where the BOQ specifies 18mm BWP plywood. These files are demo evidence only and are not processed by the application yet.
+
 ## Development roadmap
 
 1. Build deterministic item matching and a transparent discrepancy summary.

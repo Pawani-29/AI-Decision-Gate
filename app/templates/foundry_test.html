@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Foundry Connection Test | AI Decision Gate{% endblock %}
+
+{% block content %}
+  <p class="eyebrow">Development integration check</p>
+  <h1>Foundry agent connection test</h1>
+  <p>This page sends one fixed question to the existing payment-verification agent. It does not make a payment decision or submit uploaded files.</p>
+
+  {% if error %}
+    <section class="error-panel" aria-labelledby="connection-error">
+      <h2 id="connection-error">Connection unavailable</h2>
+      <p>{{ error }}</p>
+    </section>
+  {% else %}
+    <section class="success" aria-labelledby="agent-response">
+      <h2 id="agent-response">Agent response</h2>
+      <p><strong>Question:</strong> {{ question }}</p>
+      <p class="agent-response">{{ response }}</p>
+    </section>
+  {% endif %}
+{% endblock %}
