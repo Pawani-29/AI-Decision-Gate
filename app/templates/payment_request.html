@@ -20,6 +20,14 @@
       <p><strong>Review ID:</strong> {{ review_id }}</p>
       <p><strong>Review evidence index:</strong> {{ vector_store_id }}</p>
     </section>
+
+    {% if evidence_analysis %}
+      <section aria-labelledby="evidence-analysis-heading">
+        <h2 id="evidence-analysis-heading">Evidence analysis</h2>
+        <p class="agent-response">{{ evidence_analysis }}</p>
+        <p>The final payment decision is always yours. Review the source documents before making any payment.</p>
+      </section>
+    {% endif %}
   {% else %}
     {% if errors and errors.foundry %}<p class="error">{{ errors.foundry }}</p>{% endif %}
     <form method="post" enctype="multipart/form-data" novalidate>

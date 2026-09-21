@@ -9,6 +9,7 @@ from app.services.foundry_documents import (
 )
 from app.services.foundry_agent import (
     CABINET_MATERIAL_QUESTION,
+    PAYMENT_REVIEW_QUESTION,
     FoundryAgentService,
     FoundryConfigurationError,
     FoundryRequestError,
@@ -52,6 +53,26 @@ def payment_request():
                     payment_amount=result.payment_amount,
                 ), 502
 
+            agent_service_factory = current_app.config.get(
+                "FOUNDRY_SERVICE_FACTORY", FoundryAgentService
+            )
+            try:
+                evidence_analysis = agent_service_factory().ask(
+                    PAYMENT_REVIEW_QUESTION,
+                    vector_store_id=ingestion_result.vector_store_id,
+                )
+            except (FoundryConfigurationError, FoundryRequestError):
+                return render_template(
+                    "payment_request.html",
+                    errors={
+                        "foundry": (
+                            "Documents were indexed, but the payment verification agent "
+                            "could not analyze the evidence. Please try again later."
+                        )
+                    },
+                    payment_amount=result.payment_amount,
+                ), 502
+
             return render_template(
                 "payment_request.html",
                 payment_amount=result.payment_amount,
@@ -59,6 +80,7 @@ def payment_request():
                 review_id=ingestion_result.review_id,
                 vector_store_id=ingestion_result.vector_store_id,
                 indexed_documents=ingestion_result.uploaded_documents,
+                evidence_analysis=evidence_analysis,
             )
 
         return render_template(

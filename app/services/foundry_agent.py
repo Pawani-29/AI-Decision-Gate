@@ -12,6 +12,12 @@ CABINET_MATERIAL_QUESTION = (
     "Compare the kitchen cabinet material across the BOQ, change order, "
     "and contractor invoice."
 )
+PAYMENT_REVIEW_QUESTION = (
+    "Review the contractor payment request against the original BOQ, approved "
+    "change order, and contractor invoice. Highlight matching items, changed "
+    "items, possible mismatches, missing evidence, and details requiring human "
+    "verification. Do not approve or reject the payment."
+)
 
 
 class FoundryConfigurationError(ValueError):

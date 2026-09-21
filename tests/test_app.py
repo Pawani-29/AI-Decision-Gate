@@ -1,6 +1,12 @@
 from io import BytesIO
 
 from app import create_app
+from app.services.foundry_agent import (
+    PAYMENT_REVIEW_QUESTION,
+    FoundryConfigurationError,
+    FoundryRequestError,
+)
+from app.services.foundry_documents import FoundryDocumentIngestionError
 
 
 class FakeDocumentService:
@@ -16,8 +22,20 @@ class FakeDocumentService:
         )()
 
 
-def create_test_app():
-    return create_app({"TESTING": True, "FOUNDRY_DOCUMENT_SERVICE_FACTORY": FakeDocumentService})
+class FakeFoundryAgentService:
+    def ask(self, question, vector_store_id=None):
+        return f"Mock analysis for {vector_store_id}: {question}"
+
+
+def create_test_app(extra_config=None):
+    config = {
+        "TESTING": True,
+        "FOUNDRY_DOCUMENT_SERVICE_FACTORY": FakeDocumentService,
+        "FOUNDRY_SERVICE_FACTORY": FakeFoundryAgentService,
+    }
+    if extra_config:
+        config.update(extra_config)
+    return create_app(config)
 
 
 def test_home_page_loads():
@@ -105,6 +123,75 @@ def test_successful_form_submission_shows_uploaded_document_names(tmp_path):
     assert b"Nothing has been approved or rejected." in response.data
     assert b"review-test" in response.data
     assert b"vs-test" in response.data
+    assert b"Evidence analysis" in response.data
+    assert b"Mock analysis for vs-test:" in response.data
+    assert b"The final payment decision is always yours." in response.data
+
+
+def test_successful_form_submission_invokes_agent_with_review_vector_store(tmp_path):
+    captured = {}
+
+    class SpyingAgentService:
+        def ask(self, question, vector_store_id=None):
+            captured["question"] = question
+            captured["vector_store_id"] = vector_store_id
+            return "Analysis complete: matching items found."
+
+    app = create_test_app({"FOUNDRY_SERVICE_FACTORY": SpyingAgentService})
+    app.config.update(TESTING=True, UPLOAD_FOLDER=tmp_path)
+
+    response = app.test_client().post(
+        "/payment-request",
+        data=_valid_request_data(),
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 200
+    assert captured["vector_store_id"] == "vs-test"
+    assert captured["question"] == PAYMENT_REVIEW_QUESTION
+    assert b"Analysis complete: matching items found." in response.data
+
+
+def test_agent_failure_returns_bad_gateway(tmp_path):
+    class FailingAgentService:
+        def ask(self, question, vector_store_id=None):
+            raise FoundryRequestError("Agent unreachable")
+
+    app = create_test_app({"FOUNDRY_SERVICE_FACTORY": FailingAgentService})
+    app.config.update(TESTING=True, UPLOAD_FOLDER=tmp_path)
+
+    response = app.test_client().post(
+        "/payment-request",
+        data=_valid_request_data(),
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 502
+    assert (
+        b"Documents were indexed, but the payment verification agent could not analyze the evidence."
+        in response.data
+    )
+
+
+def test_ingestion_failure_returns_bad_gateway(tmp_path):
+    class FailingDocumentService:
+        def ingest_review_documents(self, documents):
+            raise FoundryDocumentIngestionError("Ingestion failed")
+
+    app = create_test_app({"FOUNDRY_DOCUMENT_SERVICE_FACTORY": FailingDocumentService})
+    app.config.update(TESTING=True, UPLOAD_FOLDER=tmp_path)
+
+    response = app.test_client().post(
+        "/payment-request",
+        data=_valid_request_data(),
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 502
+    assert (
+        b"Documents were saved locally, but could not be prepared for Foundry review."
+        in response.data
+    )
 
 
 def _valid_request_data():

@@ -3,6 +3,7 @@ import pytest
 from app import create_app
 from app.services.foundry_agent import (
     CABINET_MATERIAL_QUESTION,
+    PAYMENT_REVIEW_QUESTION,
     FoundryAgentService,
     FoundryAgentVersionError,
     FoundryConfigurationError,
@@ -186,3 +187,9 @@ def test_development_route_displays_mocked_agent_response():
 
     assert response.status_code == 200
     assert b"The invoice material differs from the BOQ." in response.data
+
+
+def test_payment_review_question_preserves_human_decision_rules():
+    assert "human" in PAYMENT_REVIEW_QUESTION.lower()
+    assert "not approve or reject" in PAYMENT_REVIEW_QUESTION.lower()
+

@@ -55,11 +55,13 @@ The existing agent's fixed File Search version remains unchanged. Run `python sc
 
 Set the printed version in `FOUNDRY_DYNAMIC_AGENT_VERSION`. Calls that supply `vector_store_id` explicitly reference this draft version and pass the value as `extra_body["structured_inputs"]["vector_store_id"]`. Calls without it continue to use the fixed-index development path. Milestone 6A did not upload user files; the review-specific upload flow is described below.
 
-## Review-specific document ingestion
+## Review-specific document ingestion and dynamic evidence analysis
 
-After the payment-request form validates and stores its three local evidence files, the application creates a new Foundry vector store named with a generated review ID. It uploads the BOQ, approved change order, and invoice with `upload_and_poll`, then waits until the new store reports `completed`. The returned review ID and vector-store ID are shown only as review metadata; the files are not served from a public route and the agent is not invoked yet.
+After the payment-request form validates and stores its three local evidence files, the application creates a new Foundry vector store named with a generated review ID. It uploads the BOQ, approved change order, and invoice with `upload_and_poll`, then waits until the new store reports `completed`.
 
-If indexing fails, the application attempts to delete only the newly created review vector store. The fixed demo vector store and existing agent versions are not read, changed, or deleted by this flow.
+Once indexed, the application invokes the draft dynamic Foundry agent version using the review-specific `vector_store_id`. The agent analyzes the evidence to highlight matches, changes, discrepancies, and questions requiring human review. The resulting evidence analysis is displayed in the Flask review view for the homeowner. The system never approves or rejects payment automatically.
+
+If indexing or agent analysis fails, appropriate error guidance is returned. If indexing fails, the application attempts to delete only the newly created review vector store. The fixed demo vector store and existing agent versions are not read, changed, or deleted by this flow.
 
 ## Demo dataset
 
