@@ -14,7 +14,6 @@ The MVP provides a small Flask foundation, a review-oriented landing page, and a
 
 Out of scope for this stage:
 
-- Microsoft Foundry and Azure integrations
 - Document intelligence or image analysis
 - Authentication
 - WhatsApp or other messaging integrations
@@ -49,6 +48,12 @@ The development connection test uses an existing Foundry agent; it does not crea
 4. Start the Flask app and open `http://127.0.0.1:5000/development/foundry-test`.
 
 The route asks the existing agent: “Compare the kitchen cabinet material across the BOQ, change order, and contractor invoice.” It is a connection check only; it does not make a payment decision.
+
+## Dynamic File Search architecture
+
+The existing agent's fixed File Search version remains unchanged. Run `python scripts/create_dynamic_foundry_agent_version.py` after local Azure authentication to create a new **draft** version of the same agent. The script reads the current agent's instructions and verifies its `gpt-5-mini` model before creating a definition with only `FileSearchTool(vector_store_ids=["{{vector_store_id}}"] )` and a required `vector_store_id` structured input.
+
+Set the printed version in `FOUNDRY_DYNAMIC_AGENT_VERSION`. Calls that supply `vector_store_id` explicitly reference this draft version and pass the value as `extra_body["structured_inputs"]["vector_store_id"]`. Calls without it continue to use the fixed-index development path. No user files are uploaded to Foundry in this milestone.
 
 ## Demo dataset
 
