@@ -53,7 +53,13 @@ The route asks the existing agent: “Compare the kitchen cabinet material acros
 
 The existing agent's fixed File Search version remains unchanged. Run `python scripts/create_dynamic_foundry_agent_version.py` after local Azure authentication to create a new **draft** version of the same agent. The script reads the current agent's instructions and verifies its `gpt-5-mini` model before creating a definition with only `FileSearchTool(vector_store_ids=["{{vector_store_id}}"] )` and a required `vector_store_id` structured input.
 
-Set the printed version in `FOUNDRY_DYNAMIC_AGENT_VERSION`. Calls that supply `vector_store_id` explicitly reference this draft version and pass the value as `extra_body["structured_inputs"]["vector_store_id"]`. Calls without it continue to use the fixed-index development path. No user files are uploaded to Foundry in this milestone.
+Set the printed version in `FOUNDRY_DYNAMIC_AGENT_VERSION`. Calls that supply `vector_store_id` explicitly reference this draft version and pass the value as `extra_body["structured_inputs"]["vector_store_id"]`. Calls without it continue to use the fixed-index development path. Milestone 6A did not upload user files; the review-specific upload flow is described below.
+
+## Review-specific document ingestion
+
+After the payment-request form validates and stores its three local evidence files, the application creates a new Foundry vector store named with a generated review ID. It uploads the BOQ, approved change order, and invoice with `upload_and_poll`, then waits until the new store reports `completed`. The returned review ID and vector-store ID are shown only as review metadata; the files are not served from a public route and the agent is not invoked yet.
+
+If indexing fails, the application attempts to delete only the newly created review vector store. The fixed demo vector store and existing agent versions are not read, changed, or deleted by this flow.
 
 ## Demo dataset
 

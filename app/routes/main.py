@@ -3,6 +3,10 @@ from pathlib import Path
 from flask import Blueprint, current_app, render_template, request
 
 from app.services.payment_request import process_payment_request
+from app.services.foundry_documents import (
+    FoundryDocumentIngestionError,
+    FoundryDocumentService,
+)
 from app.services.foundry_agent import (
     CABINET_MATERIAL_QUESTION,
     FoundryAgentService,
@@ -29,10 +33,32 @@ def payment_request():
             upload_folder=Path(current_app.config["UPLOAD_FOLDER"]),
         )
         if result.is_valid:
+            document_service_factory = current_app.config.get(
+                "FOUNDRY_DOCUMENT_SERVICE_FACTORY", FoundryDocumentService
+            )
+            try:
+                ingestion_result = document_service_factory().ingest_review_documents(
+                    result.stored_documents
+                )
+            except (FoundryConfigurationError, FoundryDocumentIngestionError):
+                return render_template(
+                    "payment_request.html",
+                    errors={
+                        "foundry": (
+                            "Documents were saved locally, but could not be prepared for "
+                            "Foundry review. Please try again later."
+                        )
+                    },
+                    payment_amount=result.payment_amount,
+                ), 502
+
             return render_template(
                 "payment_request.html",
                 payment_amount=result.payment_amount,
                 uploaded_documents=result.uploaded_documents,
+                review_id=ingestion_result.review_id,
+                vector_store_id=ingestion_result.vector_store_id,
+                indexed_documents=ingestion_result.uploaded_documents,
             )
 
         return render_template(

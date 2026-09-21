@@ -17,8 +17,11 @@
         {% endfor %}
       </ul>
       <p><strong>Requested payment amount:</strong> {{ payment_amount }}</p>
+      <p><strong>Review ID:</strong> {{ review_id }}</p>
+      <p><strong>Review evidence index:</strong> {{ vector_store_id }}</p>
     </section>
   {% else %}
+    {% if errors and errors.foundry %}<p class="error">{{ errors.foundry }}</p>{% endif %}
     <form method="post" enctype="multipart/form-data" novalidate>
       <div class="form-field">
         <label for="original_boq">Original BOQ / quotation</label>

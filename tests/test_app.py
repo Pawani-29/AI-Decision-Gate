@@ -3,8 +3,25 @@ from io import BytesIO
 from app import create_app
 
 
+class FakeDocumentService:
+    def ingest_review_documents(self, documents):
+        return type(
+            "IngestionResult",
+            (),
+            {
+                "review_id": "review-test",
+                "vector_store_id": "vs-test",
+                "uploaded_documents": (),
+            },
+        )()
+
+
+def create_test_app():
+    return create_app({"TESTING": True, "FOUNDRY_DOCUMENT_SERVICE_FACTORY": FakeDocumentService})
+
+
 def test_home_page_loads():
-    app = create_app()
+    app = create_test_app()
     response = app.test_client().get("/")
 
     assert response.status_code == 200
@@ -12,7 +29,7 @@ def test_home_page_loads():
 
 
 def test_successful_upload(tmp_path):
-    app = create_app()
+    app = create_test_app()
     app.config.update(TESTING=True, UPLOAD_FOLDER=tmp_path)
 
     response = app.test_client().post(
@@ -29,7 +46,7 @@ def test_successful_upload(tmp_path):
 
 
 def test_missing_required_document_returns_validation_error(tmp_path):
-    app = create_app()
+    app = create_test_app()
     app.config.update(TESTING=True, UPLOAD_FOLDER=tmp_path)
     data = _valid_request_data()
     del data["contractor_invoice"]
@@ -44,7 +61,7 @@ def test_missing_required_document_returns_validation_error(tmp_path):
 
 
 def test_unsupported_file_type_returns_validation_error(tmp_path):
-    app = create_app()
+    app = create_test_app()
     app.config.update(TESTING=True, UPLOAD_FOLDER=tmp_path)
     data = _valid_request_data()
     data["original_boq"] = (BytesIO(b"not a document"), "boq.txt")
@@ -58,7 +75,7 @@ def test_unsupported_file_type_returns_validation_error(tmp_path):
 
 
 def test_invalid_payment_amount_returns_validation_error(tmp_path):
-    app = create_app()
+    app = create_test_app()
     app.config.update(TESTING=True, UPLOAD_FOLDER=tmp_path)
     data = _valid_request_data()
     data["payment_amount"] = "0"
@@ -72,7 +89,7 @@ def test_invalid_payment_amount_returns_validation_error(tmp_path):
 
 
 def test_successful_form_submission_shows_uploaded_document_names(tmp_path):
-    app = create_app()
+    app = create_test_app()
     app.config.update(TESTING=True, UPLOAD_FOLDER=tmp_path)
 
     response = app.test_client().post(
@@ -86,6 +103,8 @@ def test_successful_form_submission_shows_uploaded_document_names(tmp_path):
     assert b"change-order.docx" in response.data
     assert b"invoice.pdf" in response.data
     assert b"Nothing has been approved or rejected." in response.data
+    assert b"review-test" in response.data
+    assert b"vs-test" in response.data
 
 
 def _valid_request_data():

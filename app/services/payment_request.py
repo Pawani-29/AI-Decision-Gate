@@ -23,6 +23,7 @@ class PaymentRequestResult:
     errors: dict[str, str] = field(default_factory=dict)
     payment_amount: str = ""
     uploaded_documents: dict[str, str] = field(default_factory=dict)
+    stored_documents: dict[str, Path] = field(default_factory=dict)
 
     @property
     def is_valid(self) -> bool:
@@ -45,8 +46,10 @@ def process_payment_request(
         uploaded_file = files[field_name]
         extension = Path(uploaded_file.filename).suffix.lower()
         stored_filename = f"{uuid4().hex}{extension}"
-        uploaded_file.save(upload_folder / stored_filename)
+        stored_path = upload_folder / stored_filename
+        uploaded_file.save(stored_path)
         result.uploaded_documents[display_name] = uploaded_file.filename
+        result.stored_documents[display_name] = stored_path
 
     return result
 
