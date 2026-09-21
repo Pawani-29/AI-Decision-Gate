@@ -1,0 +1,26 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #1f2937;
+  background: #f8fafc;
+}
+
+body { margin: 0; }
+
+.page-shell {
+  max-width: 46rem;
+  margin: 10vh auto;
+  padding: 2rem;
+}
+
+.eyebrow {
+  color: #2563eb;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+section {
+  margin-top: 2rem;
+  padding: 1rem;
+  background: #fff;
+  border-left: 4px solid #2563eb;
+}
