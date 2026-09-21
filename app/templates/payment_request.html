@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Request | AI Decision Gate{% endblock %}
+
+{% block content %}
+  <p class="eyebrow">Contractor payment verification</p>
+  <h1>Create a payment review request</h1>
+  <p>Upload the supporting documents and enter the requested amount. A homeowner must review the evidence before making any payment decision.</p>
+
+  {% if uploaded_documents %}
+    <section class="success" aria-labelledby="submission-success">
+      <h2 id="submission-success">Documents received for human review</h2>
+      <p>Nothing has been approved or rejected.</p>
+      <ul>
+        {% for document_type, filename in uploaded_documents.items() %}
+          <li><strong>{{ document_type }}:</strong> {{ filename }}</li>
+        {% endfor %}
+      </ul>
+      <p><strong>Requested payment amount:</strong> {{ payment_amount }}</p>
+    </section>
+  {% else %}
+    <form method="post" enctype="multipart/form-data" novalidate>
+      <div class="form-field">
+        <label for="original_boq">Original BOQ / quotation</label>
+        <input id="original_boq" name="original_boq" type="file" accept=".pdf,.docx" required>
+        {% if errors and errors.original_boq %}<p class="error">{{ errors.original_boq }}</p>{% endif %}
+      </div>
+      <div class="form-field">
+        <label for="change_order">Approved change order</label>
+        <input id="change_order" name="change_order" type="file" accept=".pdf,.docx" required>
+        {% if errors and errors.change_order %}<p class="error">{{ errors.change_order }}</p>{% endif %}
+      </div>
+      <div class="form-field">
+        <label for="contractor_invoice">Contractor invoice</label>
+        <input id="contractor_invoice" name="contractor_invoice" type="file" accept=".pdf,.docx" required>
+        {% if errors and errors.contractor_invoice %}<p class="error">{{ errors.contractor_invoice }}</p>{% endif %}
+      </div>
+      <div class="form-field">
+        <label for="payment_amount">Requested payment amount</label>
+        <input id="payment_amount" name="payment_amount" type="number" min="0.01" step="0.01" value="{{ payment_amount or '' }}" required>
+        {% if errors and errors.payment_amount %}<p class="error">{{ errors.payment_amount }}</p>{% endif %}
+      </div>
+      <button type="submit">Submit for human review</button>
+    </form>
+  {% endif %}
+{% endblock %}

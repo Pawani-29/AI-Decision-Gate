@@ -10,7 +10,7 @@ AI Decision Gate is a human-in-the-loop review tool. It will organize the availa
 
 ## MVP scope
 
-The first MVP provides a small Flask foundation and a review-oriented landing page. Upcoming MVP slices will add manual evidence entry, deterministic item comparison, and a human review summary.
+The MVP provides a small Flask foundation, a review-oriented landing page, and a payment-request form. Users can submit an original BOQ/quotation, approved change order, contractor invoice, and positive requested amount. Development uploads are stored locally outside the `app/` package and are not publicly served.
 
 Out of scope for this stage:
 
@@ -41,9 +41,8 @@ The web layer receives requests and renders pages. The service layer will hold c
 
 ## Development roadmap
 
-1. Add a manual form for BOQ, change-order, and invoice line items.
-2. Build deterministic item matching and a transparent discrepancy summary.
-3. Add tests for comparison scenarios and missing-evidence cases.
-4. Introduce document uploads with validation and local parsing.
-5. Add Foundry File Search/RAG through a dedicated service adapter.
-6. Evaluate optional Azure Document Intelligence and image analysis.
+1. Build deterministic item matching and a transparent discrepancy summary.
+2. Add tests for comparison scenarios and missing-evidence cases.
+3. Add local document parsing with content and size validation.
+4. Add Foundry File Search/RAG through a dedicated service adapter.
+5. Evaluate optional Azure Document Intelligence and image analysis.
