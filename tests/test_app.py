@@ -1,4 +1,5 @@
 from io import BytesIO
+import json
 
 from app import create_app
 from app.services.foundry_agent import (
@@ -7,6 +8,36 @@ from app.services.foundry_agent import (
     FoundryRequestError,
 )
 from app.services.foundry_documents import FoundryDocumentIngestionError
+
+SAMPLE_AGENT_STRUCTURED_JSON = json.dumps({
+    "invoice_total_stated": 12500.00,
+    "invoice_items": [
+        {
+            "description": "Cabinet installation",
+            "quantity": 10,
+            "unit": "units",
+            "unit_rate": 1250.00,
+            "stated_total": 12500.00,
+            "boq_quantity": 10,
+            "boq_unit_rate": 1250.00,
+        }
+    ],
+    "matches": [
+        {"title": "Cabinet Scope", "description": "10 units match quotation.", "source_reference": "BOQ #1"}
+    ],
+    "approved_changes": [
+        {"title": "Handle upgrade", "description": "Approved in CO-1.", "source_reference": "CO-1"}
+    ],
+    "possible_mismatches": [
+        {"title": "Plywood spec", "description": "Commercial plywood substituted.", "source_reference": "CO-1"}
+    ],
+    "missing_evidence": [
+        {"title": "Delivery receipt", "description": "Receipt not provided.", "source_reference": "Site log"}
+    ],
+    "human_verification_required": [
+        {"title": "Check cabinet thickness", "description": "Verify 18mm thickness before payment.", "source_reference": "Inspection"}
+    ],
+})
 
 
 class FakeDocumentService:
@@ -23,7 +54,9 @@ class FakeDocumentService:
 
 
 class FakeFoundryAgentService:
-    def ask(self, question, vector_store_id=None):
+    def ask(self, question, vector_store_id=None, json_output=False):
+        if json_output:
+            return SAMPLE_AGENT_STRUCTURED_JSON
         return f"Mock analysis for {vector_store_id}: {question}"
 
 
@@ -123,19 +156,32 @@ def test_successful_form_submission_shows_uploaded_document_names(tmp_path):
     assert b"Nothing has been approved or rejected." in response.data
     assert b"review-test" in response.data
     assert b"vs-test" in response.data
-    assert b"Evidence analysis" in response.data
-    assert b"Mock analysis for vs-test:" in response.data
+    assert b"Decision Gate Report" in response.data
+    assert b"Matches" in response.data
+    assert b"10 units match quotation" in response.data
+    assert b"Approved Changes" in response.data
+    assert b"Handle upgrade" in response.data
+    assert b"Possible Mismatches" in response.data
+    assert b"Commercial plywood substituted" in response.data
+    assert b"Missing Evidence" in response.data
+    assert b"Delivery receipt" in response.data
+    assert b"Human Verification Required" in response.data
+    assert b"Check cabinet thickness" in response.data
+    assert b"Deterministic arithmetic status" in response.data
+    assert b"Arithmetic verified" in response.data
     assert b"The final payment decision is always yours." in response.data
+    assert b"Original AI Evidence Analysis (Traceability)" in response.data
 
 
 def test_successful_form_submission_invokes_agent_with_review_vector_store(tmp_path):
     captured = {}
 
     class SpyingAgentService:
-        def ask(self, question, vector_store_id=None):
+        def ask(self, question, vector_store_id=None, json_output=False):
             captured["question"] = question
             captured["vector_store_id"] = vector_store_id
-            return "Analysis complete: matching items found."
+            captured["json_output"] = json_output
+            return SAMPLE_AGENT_STRUCTURED_JSON
 
     app = create_test_app({"FOUNDRY_SERVICE_FACTORY": SpyingAgentService})
     app.config.update(TESTING=True, UPLOAD_FOLDER=tmp_path)
@@ -149,7 +195,29 @@ def test_successful_form_submission_invokes_agent_with_review_vector_store(tmp_p
     assert response.status_code == 200
     assert captured["vector_store_id"] == "vs-test"
     assert captured["question"] == PAYMENT_REVIEW_QUESTION
-    assert b"Analysis complete: matching items found." in response.data
+    assert captured["json_output"] is True
+    assert b"Decision Gate Report" in response.data
+
+
+def test_form_submission_handles_malformed_ai_output_gracefully(tmp_path):
+    class MalformedAgentService:
+        def ask(self, question, vector_store_id=None, json_output=False):
+            return "This is unformatted model prose with no JSON structure."
+
+    app = create_test_app({"FOUNDRY_SERVICE_FACTORY": MalformedAgentService})
+    app.config.update(TESTING=True, UPLOAD_FOLDER=tmp_path)
+
+    response = app.test_client().post(
+        "/payment-request",
+        data=_valid_request_data(),
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 200
+    assert b"Decision Gate Report" in response.data
+    assert b"Unstructured Analysis Output" in response.data
+    assert b"This is unformatted model prose with no JSON structure." in response.data
+    assert b"Unable to verify arithmetic automatically" in response.data
 
 
 def test_agent_failure_returns_bad_gateway(tmp_path):

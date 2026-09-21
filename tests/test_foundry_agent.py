@@ -104,6 +104,11 @@ def test_service_passes_dynamic_vector_store_through_structured_inputs():
         "agent_reference": {"name": "existing-agent", "version": "7", "type": "agent_reference"},
         "structured_inputs": {"vector_store_id": "vs_user_review"},
     }
+    assert "text" not in captured["response_request"]
+
+    # When json_output is requested
+    service.ask("Review this evidence.", vector_store_id="vs_user_review", json_output=True)
+    assert captured["response_request"]["text"] == {"format": {"type": "json_object"}}
 
 
 def test_dynamic_vector_store_requires_dynamic_agent_version():

@@ -14,6 +14,7 @@ from app.services.foundry_agent import (
     FoundryConfigurationError,
     FoundryRequestError,
 )
+from app.services.evidence_analysis import parse_evidence_analysis
 
 main_bp = Blueprint("main", __name__)
 
@@ -57,10 +58,17 @@ def payment_request():
                 "FOUNDRY_SERVICE_FACTORY", FoundryAgentService
             )
             try:
-                evidence_analysis = agent_service_factory().ask(
-                    PAYMENT_REVIEW_QUESTION,
-                    vector_store_id=ingestion_result.vector_store_id,
-                )
+                try:
+                    evidence_analysis_text = agent_service_factory().ask(
+                        PAYMENT_REVIEW_QUESTION,
+                        vector_store_id=ingestion_result.vector_store_id,
+                        json_output=True,
+                    )
+                except TypeError:
+                    evidence_analysis_text = agent_service_factory().ask(
+                        PAYMENT_REVIEW_QUESTION,
+                        vector_store_id=ingestion_result.vector_store_id,
+                    )
             except (FoundryConfigurationError, FoundryRequestError):
                 return render_template(
                     "payment_request.html",
@@ -73,6 +81,11 @@ def payment_request():
                     payment_amount=result.payment_amount,
                 ), 502
 
+            findings = parse_evidence_analysis(
+                evidence_analysis_text,
+                requested_amount=result.payment_amount,
+            )
+
             return render_template(
                 "payment_request.html",
                 payment_amount=result.payment_amount,
@@ -80,7 +93,8 @@ def payment_request():
                 review_id=ingestion_result.review_id,
                 vector_store_id=ingestion_result.vector_store_id,
                 indexed_documents=ingestion_result.uploaded_documents,
-                evidence_analysis=evidence_analysis,
+                findings=findings,
+                evidence_analysis=evidence_analysis_text,
             )
 
         return render_template(

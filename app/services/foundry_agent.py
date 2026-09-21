@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 import os
-from typing import Callable, Mapping
+from typing import Any, Callable, Mapping
 
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import FileSearchTool, PromptAgentDefinition, StructuredInputDefinition
@@ -14,9 +14,26 @@ CABINET_MATERIAL_QUESTION = (
 )
 PAYMENT_REVIEW_QUESTION = (
     "Review the contractor payment request against the original BOQ, approved "
-    "change order, and contractor invoice. Highlight matching items, changed "
-    "items, possible mismatches, missing evidence, and details requiring human "
-    "verification. Do not approve or reject the payment."
+    "change order, and contractor invoice in the evidence store. "
+    "Highlight matching items, changed items, possible mismatches, missing evidence, "
+    "and details requiring human verification. "
+    "Extract invoice line items with descriptions, quantities, unit rates, stated totals, "
+    "and corresponding BOQ quantities and rates. "
+    "Do not approve or reject the payment; provide observations for human review. "
+    "Respond with a valid JSON object matching this schema:\n"
+    "{\n"
+    '  "invoice_total_stated": <number or null>,\n'
+    '  "invoice_items": [\n'
+    '    {"description": "<str>", "quantity": <number or null>, "unit": "<str or null>", '
+    '"unit_rate": <number or null>, "stated_total": <number or null>, '
+    '"boq_quantity": <number or null>, "boq_unit_rate": <number or null>}\n'
+    "  ],\n"
+    '  "matches": [{"title": "<str>", "description": "<str>", "source_reference": "<str or null>"}],\n'
+    '  "approved_changes": [{"title": "<str>", "description": "<str>", "source_reference": "<str or null>"}],\n'
+    '  "possible_mismatches": [{"title": "<str>", "description": "<str>", "source_reference": "<str or null>"}],\n'
+    '  "missing_evidence": [{"title": "<str>", "description": "<str>", "source_reference": "<str or null>"}],\n'
+    '  "human_verification_required": [{"title": "<str>", "description": "<str>", "source_reference": "<str or null>"}]\n'
+    "}"
 )
 
 
@@ -72,7 +89,12 @@ class FoundryAgentService:
         self._credential_factory = credential_factory
         self._project_client_factory = project_client_factory
 
-    def ask(self, question: str, vector_store_id: str | None = None) -> str:
+    def ask(
+        self,
+        question: str,
+        vector_store_id: str | None = None,
+        json_output: bool = False,
+    ) -> str:
         """Send a question to the fixed or explicitly selected dynamic agent version."""
         if vector_store_id and not self._settings.dynamic_agent_version:
             raise FoundryConfigurationError(
@@ -86,7 +108,7 @@ class FoundryAgentService:
             )
             if vector_store_id:
                 return self._ask_with_dynamic_vector_store(
-                    project_client, question, vector_store_id
+                    project_client, question, vector_store_id, json_output=json_output
                 )
 
             openai_client = project_client.get_openai_client(agent_name=self._settings.agent_name)
@@ -150,14 +172,18 @@ class FoundryAgentService:
         return created_version.version
 
     def _ask_with_dynamic_vector_store(
-        self, project_client: AIProjectClient, question: str, vector_store_id: str
+        self,
+        project_client: AIProjectClient,
+        question: str,
+        vector_store_id: str,
+        json_output: bool = False,
     ) -> str:
         openai_client = project_client.get_openai_client()
         conversation = openai_client.conversations.create()
-        response = openai_client.responses.create(
-            conversation=conversation.id,
-            input=question,
-            extra_body={
+        request_params: dict[str, Any] = {
+            "conversation": conversation.id,
+            "input": question,
+            "extra_body": {
                 "agent_reference": {
                     "name": self._settings.agent_name,
                     "version": self._settings.dynamic_agent_version,
@@ -165,5 +191,8 @@ class FoundryAgentService:
                 },
                 "structured_inputs": {"vector_store_id": vector_store_id},
             },
-        )
+        }
+        if json_output:
+            request_params["text"] = {"format": {"type": "json_object"}}
+        response = openai_client.responses.create(**request_params)
         return response.output_text

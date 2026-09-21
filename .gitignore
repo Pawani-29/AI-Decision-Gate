@@ -7,3 +7,4 @@ venv/
 instance/
 uploads/
 .pytest_tmp/
+powershell.cmd

@@ -21,7 +21,160 @@
       <p><strong>Review evidence index:</strong> {{ vector_store_id }}</p>
     </section>
 
-    {% if evidence_analysis %}
+    {% if findings %}
+      <section class="decision-gate-report" aria-labelledby="decision-gate-heading">
+        <h2 id="decision-gate-heading">Decision Gate Report</h2>
+        <p class="notice">The final payment decision is always yours. Review the source documents and findings before making any payment.</p>
+
+        <div class="financial-summary">
+          <h3>Payment & Invoice Totals</h3>
+          <p><strong>Requested payment amount:</strong> {{ payment_amount }}</p>
+          {% if findings.invoice_stated_total is not none %}
+            <p><strong>Invoice total:</strong> {{ findings.invoice_stated_total }}</p>
+          {% elif findings.deterministic_checks and findings.deterministic_checks.invoice_calculated_total %}
+            <p><strong>Invoice total:</strong> {{ findings.deterministic_checks.invoice_calculated_total }} (calculated from items)</p>
+          {% else %}
+            <p><strong>Invoice total:</strong> Not available</p>
+          {% endif %}
+          {% if findings.deterministic_checks %}
+            <p><strong>Deterministic arithmetic status:</strong> <span class="badge badge-{{ 'verified' if findings.deterministic_checks.status == 'Arithmetic verified' else 'discrepancy' }}">{{ findings.deterministic_checks.status }}</span></p>
+            {% if findings.deterministic_checks.summary_notes %}
+              <ul>
+                {% for note in findings.deterministic_checks.summary_notes %}
+                  <li>{{ note }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          {% endif %}
+        </div>
+
+        {% if findings.deterministic_checks and findings.deterministic_checks.line_item_checks %}
+          <div class="line-items-summary">
+            <h3>Invoice Line-Item Arithmetic Checks</h3>
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th>Quantity</th>
+                  <th>Rate</th>
+                  <th>Stated Total</th>
+                  <th>Calculated Total</th>
+                  <th>Status & Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in findings.deterministic_checks.line_item_checks %}
+                  <tr>
+                    <td>{{ item.description }}</td>
+                    <td>{{ item.quantity if item.quantity is not none else '—' }} {{ item.unit or '' }}</td>
+                    <td>{{ item.unit_rate if item.unit_rate is not none else '—' }}</td>
+                    <td>{{ item.stated_total if item.stated_total is not none else '—' }}</td>
+                    <td>{{ item.calculated_total if item.calculated_total is not none else '—' }}</td>
+                    <td>
+                      {% if item.is_item_total_correct is true %}
+                        <span class="badge badge-verified">Correct</span>
+                      {% elif item.is_item_total_correct is false %}
+                        <span class="badge badge-discrepancy">Mismatch</span>
+                      {% endif %}
+                      {% for note in item.notes %}
+                        <div><small>{{ note }}</small></div>
+                      {% endfor %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+
+        <div class="findings-category">
+          <h3>Matches</h3>
+          {% if findings.matches %}
+            <ul>
+              {% for item in findings.matches %}
+                <li>
+                  <strong>{{ item.title }}</strong>: {{ item.description }}
+                  {% if item.source_reference %}<br><small>Reference: {{ item.source_reference }}</small>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p>No explicit item matches documented.</p>
+          {% endif %}
+        </div>
+
+        <div class="findings-category">
+          <h3>Approved Changes</h3>
+          {% if findings.approved_changes %}
+            <ul>
+              {% for item in findings.approved_changes %}
+                <li>
+                  <strong>{{ item.title }}</strong>: {{ item.description }}
+                  {% if item.source_reference %}<br><small>Reference: {{ item.source_reference }}</small>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p>No approved changes identified.</p>
+          {% endif %}
+        </div>
+
+        <div class="findings-category">
+          <h3>Possible Mismatches</h3>
+          {% if findings.possible_mismatches %}
+            <ul>
+              {% for item in findings.possible_mismatches %}
+                <li class="warning-item">
+                  <strong>{{ item.title }}</strong>: {{ item.description }}
+                  {% if item.source_reference %}<br><small>Reference: {{ item.source_reference }}</small>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p>No obvious mismatches detected.</p>
+          {% endif %}
+        </div>
+
+        <div class="findings-category">
+          <h3>Missing Evidence</h3>
+          {% if findings.missing_evidence %}
+            <ul>
+              {% for item in findings.missing_evidence %}
+                <li class="warning-item">
+                  <strong>{{ item.title }}</strong>: {{ item.description }}
+                  {% if item.source_reference %}<br><small>Reference: {{ item.source_reference }}</small>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p>No missing evidence flagged.</p>
+          {% endif %}
+        </div>
+
+        <div class="findings-category">
+          <h3>Human Verification Required</h3>
+          {% if findings.human_verification_required %}
+            <ul>
+              {% for item in findings.human_verification_required %}
+                <li class="verification-item">
+                  <strong>{{ item.title }}</strong>: {{ item.description }}
+                  {% if item.source_reference %}<br><small>Reference: {{ item.source_reference }}</small>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p>No specific human verification items flagged.</p>
+          {% endif %}
+        </div>
+
+        {% if findings.raw_evidence_text %}
+          <details class="traceability-details">
+            <summary>Original AI Evidence Analysis (Traceability)</summary>
+            <p class="agent-response">{{ findings.raw_evidence_text }}</p>
+          </details>
+        {% endif %}
+      </section>
+    {% elif evidence_analysis %}
       <section aria-labelledby="evidence-analysis-heading">
         <h2 id="evidence-analysis-heading">Evidence analysis</h2>
         <p class="agent-response">{{ evidence_analysis }}</p>

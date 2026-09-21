@@ -63,6 +63,13 @@ Once indexed, the application invokes the draft dynamic Foundry agent version us
 
 If indexing or agent analysis fails, appropriate error guidance is returned. If indexing fails, the application attempts to delete only the newly created review vector store. The fixed demo vector store and existing agent versions are not read, changed, or deleted by this flow.
 
+## Structured Decision Gate findings and deterministic payment checks
+
+The payment verification workflow turns the AI findings into a structured Decision Gate report:
+- **Deterministic Python Checks**: Computes exact `Decimal` arithmetic verifying line-item totals (`quantity * unit_rate == stated_total`), the sum of invoice line items against the stated invoice total, the requested payment amount against the invoice total, and numerical quantity and unit-rate variances (invoice vs. BOQ).
+- **Categorized AI Observations**: Displays matching items, approved change-order additions, possible mismatches (e.g. material substitutions), missing evidence, and required human verification items.
+- **Traceability & Control**: Retains and displays the raw AI analysis text within a collapsible section, preserving full traceability while enforcing the human decision gate without automated approve/reject decisions or confidence scores.
+
 ## Demo dataset
 
 `sample_data/` contains three fictional PDF documents for one renovation scenario: the original BOQ, an approved change order, and a contractor invoice requesting INR 1,50,000. The change order approves INR 8,000 of kitchen cabinet handle/design work and explicitly does not approve a material substitution. The invoice intentionally lists 16mm commercial plywood where the BOQ specifies 18mm BWP plywood. These files are demo evidence only and are not processed by the application yet.
